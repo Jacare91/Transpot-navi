@@ -1,0 +1,84 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:background="#ffffff"
+    android:orientation="vertical">
+    <android.support.v7.widget.CardView
+        android:id="@+id/maps.input.container"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:layout_margin="4dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="#ffffff">
+            <TextView
+                android:id="@+id/maps.output.start"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:gravity="center_horizontal"
+                android:text="Adres początkowy"
+                android:singleLine="true"
+                android:textSize="16sp" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#848484"
+                android:layout_marginRight="12dp"
+                android:layout_marginLeft="12dp"/>
+            <EditText
+                android:id="@+id/maps.input.dest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:gravity="center_horizontal"
+                android:textSize="14sp"
+                android:backgroundTint="#ffffff"
+                android:imeOptions="actionDone"
+                android:singleLine="true"
+                android:hint="hgcjhfcjhfgc" />
+        </LinearLayout>
+    </android.support.v7.widget.CardView>
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/maps.address.list.suggestions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:layout_below="@+id/maps.input.container"
+        android:layout_above="@+id/maps.btn.action"/>
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/maps.photo.profile" />
+
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/maps.btn.action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="36dp"
+        android:layout_toLeftOf="@+id/maps.btn.switch"
+        android:clickable="true"
+        android:layout_alignParentBottom="true"
+        app:backgroundTint="#FF0000"
+        app:rippleColor="#FFF" />
+    <ImageView
+        android:id="@+id/maps.btn.switch"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_margin="12dp"
+        android:src="@drawable/circle"/>
+    <ImageView
+        android:id="@+id/maps.photo.profile"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_alignParentBottom="true"
+        android:background="#FF0000"
+        android:layout_margin="12dp"/>
+</RelativeLayout>
