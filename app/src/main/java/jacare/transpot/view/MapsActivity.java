@@ -1,8 +1,8 @@
-package jacare.transpot;
+package jacare.transpot.view;
 
+import android.location.Address;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.v4.app.FragmentActivity;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -16,19 +16,19 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.List;
+
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import jacare.transpot.R;
 import jacare.transpot.model.LocHelper;
 import jacare.transpot.model.LocTracker;
 import jacare.transpot.utility.AddressSuggestionAdapter;
 import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
 
-public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapClickListener {
+public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickListener {
     public static final String TAG = "Trnspt.Maps";
-
-    private final static int START = 0;
-    private final static int DEST = 1;
 
     @Bind(R.id.maps_output_start)protected TextView currPosOutput;
     @Bind(R.id.maps_input_dest)protected EditText destInput;
@@ -46,10 +46,6 @@ public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private Marker destPosMarker;
     private Marker currPosMarker;
 
-    protected boolean started;
-    protected boolean addressTyped;
-    protected boolean addresInputLocked;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +56,8 @@ public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapCli
         locHelper = new LocHelper(this);
         if(map == null)
             map = startMap();
+
+        onInputLeft(destInput).subscribe();
     }
 
     @Override
@@ -72,10 +70,8 @@ public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapCli
         LocTracker tracker = new LocTracker(this);
         tracker.getStartedLocUpdatesObs().filter(bool -> !started).subscribe();
         tracker.getUpdatedLocObs()
-                .flatMap(latLng -> locHelper.convertLatLngToAddress(latLng)
-                .filter(addresses -> (addresses != null && addresses.size() > 0))
-                .map(addresses -> addresses.get(0)))
-                .observeOn(AndroidSchedulers.mainThread())
+                .flatMap(this::convertLatLngToAddress)
+                .map(addresses -> addresses.get(0))
                 .subscribe(address -> {
                     currPosOutput.setText(address.getAddressLine(0));
                     updateCurrPos(new LatLng(address.getLatitude(), address.getLongitude()));
@@ -93,7 +89,13 @@ public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapCli
     @Override
     public void onMapClick(LatLng latLng) {
         Log.i(TAG, "OnMapClick");
-        Observable.just(latLng).map(loc -> updateDestPos(latLng))
+        Observable.just(destInput.hasFocus())
+                .filter(hasFocus -> hasFocus)
+                .flatMap(hasFocus -> Observable.just(destInput)
+                        .flatMap(this::onInputLeft))
+                .map(hasFocus -> latLng)
+
+                .map(hasFocus -> updateDestPos(latLng))
                 .flatMap(loc -> locHelper.convertLatLngToAddress(latLng))
                 .filter(addresses -> addresses != null || addresses.size() > 0)
                 .map(addresses -> addresses.get(0).getAddressLine(0))
@@ -115,5 +117,12 @@ public class MapsActivity extends FragmentActivity implements GoogleMap.OnMapCli
             currPosMarker.remove();
         currPosMarker = map.addMarker(new MarkerOptions().position(latLng));
         return latLng;
+    }
+
+    private Observable<List<Address>> convertLatLngToAddress(LatLng latLng){
+        return Observable.just(latLng)
+                .flatMap(loc -> locHelper.convertLatLngToAddress(loc)
+                .filter(addresses -> (addresses != null && addresses.size() > 0))
+                .observeOn(AndroidSchedulers.mainThread()));
     }
 }
