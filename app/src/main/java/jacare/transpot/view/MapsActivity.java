@@ -94,13 +94,10 @@ public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickLi
                 .flatMap(hasFocus -> Observable.just(destInput)
                         .flatMap(this::onInputLeft))
                 .map(hasFocus -> latLng)
-
-                .map(hasFocus -> updateDestPos(latLng))
-                .flatMap(loc -> locHelper.convertLatLngToAddress(latLng))
-                .filter(addresses -> addresses != null || addresses.size() > 0)
+                .map(this::updateDestPos)
+                .flatMap(this::convertLatLngToAddress)
                 .map(addresses -> addresses.get(0).getAddressLine(0))
-                .doOnError(e -> Log.d(TAG, "Fuckup!"))
-                .subscribe(address -> destInput.setText(address));
+                .subscribe(destInput::setText);
     }
 
     protected LatLng updateDestPos(LatLng latLng){
