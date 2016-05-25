@@ -2,6 +2,9 @@ package jacare.transpot.view;
 
 import android.location.Address;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.support.annotation.UiThread;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
@@ -16,16 +19,20 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
+import butterknife.OnTextChanged;
 import jacare.transpot.R;
 import jacare.transpot.model.LocHelper;
 import jacare.transpot.model.LocTracker;
 import jacare.transpot.utility.AddressSuggestionAdapter;
 import rx.Observable;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickListener {
     public static final String TAG = "Trnspt.Maps";
@@ -36,7 +43,6 @@ public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickLi
     @Bind(R.id.maps_btn_action)protected FloatingActionButton btnAction;
     @Bind(R.id.maps_btn_switch)protected ImageView btnSwitch;
     @Bind(R.id.maps_photo_profile)protected ImageView phtProfile;
-    @Bind(R.id.maps_address_list_suggestions) protected RecyclerView addressSuggestions;
 
     private AddressSuggestionAdapter suggestionAdapter;
     private LocTracker locTracker;
@@ -52,6 +58,7 @@ public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickLi
         setContentView(R.layout.activity_maps);
         ButterKnife.bind(this);
 
+        suggestionAdapter = new AddressSuggestionAdapter(new ArrayList<Address>());
         locTracker = startTracker();
         locHelper = new LocHelper(this);
         if(map == null)
@@ -84,6 +91,40 @@ public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickLi
                 .findFragmentById(R.id.map)).getMap();
         map.setOnMapClickListener(this);
         return map;
+    }
+
+//    private RecyclerView startAddressSuggestions(AddressSuggestionAdapter adapter){
+//        addressSuggestions.setLayoutManager(new SuggestionsLinearLayoutManager(this));
+//        addressSuggestions.setAdapter(adapter);
+//
+//        return addressSuggestions;
+//    }
+
+    @OnClick(R.id.maps_input_dest)protected void onDestClicked(){
+        destInput.setCursorVisible(true);
+        addressTyped = true;
+    }
+
+    @OnTextChanged(R.id.maps_input_dest)
+    protected void onDestTextChanged() {
+        Observable.just(destInput.getText().toString())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .filter(address -> addressTyped && !addresInputLocked)
+                .flatMap(address -> reactToAddressUpdate(address))
+                .subscribe(addresses -> {
+                    Log.i(TAG, String.format("Posting suggestions. " +
+                            "Suggestions count: %s", addresses.size()));
+
+                    Observable.just(addresses.get(0).getAddressLine(0))
+                            .filter(integer -> !addressTyped)
+                            .subscribe(destInput::setText);
+
+                    Observable.just(addresses)
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .filter(integer -> suggestionAdapter != null && addressTyped)
+                            .subscribe(this::refreshSuggestions);
+                });
     }
 
     @Override
@@ -121,5 +162,32 @@ public class MapsActivity extends BaseActivity implements GoogleMap.OnMapClickLi
                 .flatMap(loc -> locHelper.convertLatLngToAddress(loc)
                 .filter(addresses -> (addresses != null && addresses.size() > 0))
                 .observeOn(AndroidSchedulers.mainThread()));
+    }
+
+    protected Observable<List<Address>> reactToAddressUpdate(String address){
+        return Observable.just(address)
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .observeOn(Schedulers.io())
+                .flatMap(latLng -> locHelper.convertAddressStringToLatLng(address));
+    }
+
+    @UiThread
+    private void refreshSuggestions(List<Address> addresses){
+
+    }
+
+    private void lockLocUpdates(){
+        addresInputLocked = true;
+
+        Observable.just(1)
+                .observeOn(Schedulers.io())
+                .subscribe(integer -> {
+                    Looper.prepare();
+                    Handler handler = new Handler();
+                    handler.postDelayed(() -> {
+                        Log.i(TAG, "Unlocking input!");
+                        addresInputLocked = false;
+                    }, 350);
+                });
     }
 }
